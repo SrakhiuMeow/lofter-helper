@@ -4,8 +4,9 @@
 // @version      0.2
 // @description  在 Lofter 网页版查看App端浏览记录
 // @author       SrakhiuMeow
-// @match        *://*.lofter.com/
-// @grant        none
+// @match        https://www.lofter.com/
+// @grant        GM.xmlHttpRequest
+// @connect      api.lofter.com
 // @require      https://unpkg.com/ajax-hook@3.0/dist/ajaxhook.min.js
 // @run-at       document-start
 // ==/UserScript==
@@ -13,11 +14,62 @@
 (function () {
     'use strict';
 
-    function buildArticleElement(blogUrl, avatarUrl, publisher, imageUrl, digest, tags, postUrl, title) {
+    function getCookie(name) {
+        const cookies = document.cookie.split('; ');
+        for (const cookie of cookies) {
+            const [key, value] = cookie.split('=');
+            if (key === name) {
+                return decodeURIComponent(value); // 解码 Cookie 值
+            }
+        }
+        return null; // 如果未找到 Cookie，返回 null
+    }
+
+    function getHistory(authkey, blogdomain, offset = 0, limit = 50) {
+        const url = new URL("https://api.lofter.com/v2.0/history.api");
+        const params = {
+            'method': 'getList',
+            'offset': offset,
+            'limit': limit,
+            'blogdomain': blogdomain,
+            'product': 'lofter-android-7.6.12'
+        };
+
+        Object.keys(params).forEach(key =>
+            url.searchParams.append(key, params[key])
+        );
+
+        return new Promise((resolve, reject) => {
+            GM.xmlHttpRequest({
+                method: "GET",
+                url: url.toString(),
+                headers: {
+                    'lofproduct': 'lofter-android-7.6.12',
+                    'User-Agent': "LOFTER-Android 7.6.12 (V2272A; Android 13; null) WIFI",
+                    'Accept-Encoding': "br,gzip",
+                    'lofter-phone-login-auth': authkey,
+                },
+                onload: function(response) {
+                    try {
+                        // console.log(response);
+                        const data = JSON.parse(response.responseText);
+                        resolve(data.response);
+                    } catch (e) {
+                        reject(e);
+                    }
+                },
+                onerror: function(error) {
+                    reject(error);
+                }
+            });
+        });
+    }
+
+    function buildArticleElement(blogUrl, avatarUrl, publisher, imageUrl, digest, tags, postUrl, title, fullContent) {
         const avatar = document.createElement('div');
         avatar.className = 'mlistimg';
         avatar.innerHTML = `
-            <div class="w-img" style="z-index:1;"> 
+            <div class="w-img" style="z-index:1;">
                 <a href="${blogUrl}" target="_blank">
                     <img src="${avatarUrl}?imageView&amp;thumbnail=64x64&amp;type=jpg">
                 </a>
@@ -33,32 +85,39 @@
                 <div class="isayt"> <a class="isayc" href="${postUrl}" title="查看全文" target="_blank">打开新页</a></div>
                 <div class="isaym">
                     <div class="w-who"><a href="${blogUrl}" class="publishernick"
-                            target="_blank">${publisher}</a> 
+                            target="_blank">${publisher}</a>
                     </div>
-                    <div class="js">
+                    <div>
                         <div class="m-icnt">
                             <h2 class="tit"> ${title}</h2>
                             <div class="cnt">
                                 <div class="img" style="width: 164px; height: auto; display: ${notDisplayImage ? "none" : "block"}">
-                                    <div class="imgc"> <a href="#" hidefocus="true"><img 
+                                    <div class="imgc"> <a hidefocus="true"><img
                                                 style="width:164px;"
                                                 src="${imageUrl}?imageView&amp;thumbnail=1000x0&amp;type=jpg"></a>
                                         <div class="sphotolabels" style="display:none"></div>
                                     </div>
-                                    <a class="w-zoom">查看大图</a>
+                                    <a class="w-zoom">查看原图</a>
+                                </div>
+                                <div class="txt full" style="display: none;">
+                                    ${fullContent}
+                                </div>
+                                <div class="txt digest" style="display: block;">
+                                    ${digest}
                                 </div>
                             </div>
-                            <div class="txt" style="display: block;">
-                                ${digest}
-                            </div>
+                            <div class="more" style=""><a class="w-more w-more-open">展开</a></div>
+
                         </div>
-                        
+
                     </div>
+
+
                     <div class="w-opt">
                         <div class="opta" style="width: 132px;">
                             ${tags}
                         </div>
-                        <div class="optb"> <span class="opti" style="display: none;">
+                        <div class="optb"> <span class="opti" style="display: block;">
                             <span class="opti">
                                 <a href="${postUrl}" target="_blank" hidefocus="true">查看全文</a>
                                 <span class="opticrt"></span>
@@ -75,8 +134,40 @@
         article.className = 'm-mlist';
         article.appendChild(avatar);
         article.appendChild(content);
-        
-        return article;        
+
+        // 给展开按钮添加点击事件
+        const more = article.querySelector('a.w-more');
+        more.addEventListener('click', () => {
+            const full = article.querySelector('.txt.full');
+            const digest = article.querySelector('.txt.digest');
+            if (more.classList.contains('w-more-open')) {
+                more.classList.remove('w-more-open');
+                more.classList.add('w-more-close');
+                more.textContent = '收起';
+                full.style.display = 'block';
+                digest.style.display = 'none';
+            }
+            else {
+
+                more.classList.remove('w-more-close');
+                more.classList.add('w-more-open');
+                more.textContent = '展开';
+                full.style.display = 'none';
+                digest.style.display = 'block';
+                digest.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+
+        // 给查看原图按钮添加点击事件
+        const viewOriginal = article.querySelector('.w-zoom');
+        const newViewOriginal = viewOriginal.cloneNode(true);
+        viewOriginal.parentNode.replaceChild(newViewOriginal, viewOriginal);
+
+        newViewOriginal.href = imageUrl;
+        newViewOriginal.target = '_blank';
+
+
+        return article;
     }
 
     function insertArticle(article) {
@@ -84,34 +175,122 @@
         main.insertBefore(article, main.children[7]);
     }
 
+    function insertArticles(articles) {
+        const main = document.getElementById('main');
+        // const firstArticle = main.children[7];
 
-    function getHistory() {
-        console.log('hi');
+        // 插入新元素(历史记录)
+        articles.forEach(article => {
+            const articleElement = buildArticleElement(
+                article.post.publisherMainBlogInfo.homePageUrl,
+                article.post.publisherMainBlogInfo.bigAvaImg,
+                article.post.publisherMainBlogInfo.blogNickName,
+                article.post.firstImageUrlForAnti,
+                article.post.digest,
+                article.post.tagList.map(tag => `<span class="opti"><a href="${tag.tagUrl}" target="_blank"><span>${tag}</span></a></span>`).join(' '),
+                article.post.blogPageUrl,
+                article.post.title,
+                article.post.content
+            );
+            // main.insertBefore(articleElement, firstArticle);
+            main.appendChild(articleElement);
+        });
     }
 
-    const slideBar = document.getElementById('slide-bar').children[0].children[1];
-    
-    // 添加分割线
-    const dividingLine = document.createElement('div');
-    dividingLine.className = slideBar.children[3].children[0].className;
-    slideBar.insertBefore(dividingLine, slideBar.children[0]);
+    var offset = 20;
 
-    // 添加历史记录按钮
-    // 不知道为什么直接用<a>会有报错（
-    const history = document.createElement('div');
-    history.id = 'getHistory';
-    history.innerHTML = `
-        <div>
-            <h5 class="LRlf1c3Y3+bO-foPi4wNjQ==">
-                <span>历史记录</span>
-                <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" class="mVWxtvI0CO9-BAyQYEFwKw=="><path d="M8 4.5l5.5 5.5L8 15.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-            </h5>
-        </div>
-    `;
-    history.style.cursor = 'pointer';
-    history.addEventListener('click', getHistory);
-    slideBar.insertBefore(history, slideBar.children[0]);
+    function change2history() {
+        // 变换按钮状态
+        this.querySelector('span').textContent = '返回主页';
+        this.removeEventListener('click', change2history);
+        this.addEventListener('click', () => {
+            location.reload();
+        });
 
+        // 获取authkey
+        const authkey = getCookie("LOFTER-PHONE-LOGIN-AUTH");
+        if (authkey === null) {
+            console.log('未登录');
+            throw new Error('未登录');
+        }
+        // console.log('authkey:', authkey);
+
+        // 获取blogDomain
+        let blogDomain = document.querySelector('span.lg2').textContent;
+        // console.log('blogDomain:', blogDomain);
+
+        // 清除原有元素(关注更新)
+        const divs = document.querySelectorAll('div.m-mlist');
+        divs.forEach(div => {
+            div.remove();
+        });
+
+        const history = getHistory(authkey, blogDomain, 0, 20)
+            .then(response => insertArticles(response.items))
+            .catch(error => console.error(error));
+        // console.log('hi');
+        // console.log(history);
+
+        window.addEventListener('scroll', e => {
+            e.stopImmediatePropagation(); // 先阻止原逻辑
+            const threshold = 100;
+            const isNearBottom = (window.innerHeight + window.scrollY) >=
+                                document.body.scrollHeight - threshold;
+
+            if (isNearBottom) {
+                // console.log("触发自定义加载...");
+                // 调用你的加载函数（例如从其他API获取数据）
+
+                const history = getHistory(authkey, blogDomain, offset, 20)
+                .then(response => insertArticles(response.items))
+                .catch(error => console.error(error));
+                offset += 20;
+            }
+        }, true); // 必须在捕获阶段拦截！
+    }
+
+    // console.log('脚本开始执行');
+
+    // document.addEventListener('DOMContentLoaded', function() {
+    //     // 你的代码放在这里
+    //     console.log('页面加载完成，执行脚本');
+    //     initializeHistoryFeature();
+    // });
+
+    function initializeHistoryFeature() {
+        const slideBar = document.getElementById('slide-bar')?.children[0]?.children[1];
+        if (!slideBar) {
+            console.error('无法找到侧边栏元素');
+            return;
+        }
+        // 添加分割线
+        const dividingLine = document.createElement('div');
+        dividingLine.className = slideBar.children[3].children[0].className;
+        slideBar.insertBefore(dividingLine, slideBar.children[0]);
+
+        // 添加历史记录按钮
+        // 不知道为什么直接用<a>会有报错（
+        const history = document.createElement('div');
+        history.id = 'getHistory';
+        history.innerHTML = `
+            <div>
+                <h5 class="LRlf1c3Y3+bO-foPi4wNjQ==">
+                    <span>历史记录</span>
+                    <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" class="mVWxtvI0CO9-BAyQYEFwKw=="><path d="M8 4.5l5.5 5.5L8 15.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </h5>
+            </div>
+        `;
+        history.style.cursor = 'pointer';
+        history.addEventListener('click', change2history);
+        slideBar.insertBefore(history, slideBar.children[0]);
+
+    }
+
+
+
+    setTimeout(() => {
+        initializeHistoryFeature();
+    }, 2000); // 延迟 2 秒执行
 
 
 })();
