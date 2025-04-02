@@ -1,5 +1,6 @@
 // ==UserScript==
 // @name         Lofter查看历史记录
+// @license      GPLv3
 // @namespace    http://tampermonkey.net/
 // @version      0.2
 // @description  在 Lofter 网页版查看App端浏览记录
@@ -7,8 +8,7 @@
 // @match        https://www.lofter.com/
 // @grant        GM.xmlHttpRequest
 // @connect      api.lofter.com
-// @require      https://unpkg.com/ajax-hook@3.0/dist/ajaxhook.min.js
-// @run-at       document-start
+// // @run-at       document-start
 // ==/UserScript==
 
 (function () {
