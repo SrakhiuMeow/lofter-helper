@@ -343,7 +343,7 @@
             const link = doc.createElement('a');
             link.href = item.post.blogPageUrl;
             link.target = '_blank';
-            link.innerHTML = item.post.title;
+            link.innerHTML = item.post.title == '' ? item.post.noticeLinkTitle : item.post.title;
 
             list.appendChild(link);
             list.innerHTML += '<br>';
@@ -464,6 +464,31 @@
         style.textContent = `
             .block {
                 margin: 0 0 35px;
+            }
+            .side {
+                width: 84px;
+                float: left;
+            }
+
+            .img {
+                margin: 0 0 15px;
+            }
+
+            .main {
+                margin-left: 110px;
+                padding-bottom: 48px;
+            }
+
+            .tag {
+                margin: 30px 0 0;
+                clear: both;
+            }
+
+            .link {
+                margin: 20px 0 0;
+                clear: both;
+                overflow: hidden;
+                zoom: 1;
             }
         `;
         document.head.appendChild(style);
