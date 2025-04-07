@@ -14,6 +14,11 @@
 
 (function () {
     'use strict';
+    
+    const authkey = getCookie("LOFTER-PHONE-LOGIN-AUTH");
+    const blogdomain = window.location.hostname;
+    const publisher = blogdomain.split('.')[0];
+    var doc = document;
 
     function subscribe(authkey, collectionId, mode = true) {
         // 订阅合集
@@ -165,9 +170,7 @@
         return `${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
     }
 
-    const authkey = getCookie("LOFTER-PHONE-LOGIN-AUTH");
-    const blogdomain = window.location.hostname;
-    const publisher = blogdomain.split('.')[0];
+    
 
     // const controlFrame = document.getElementById('control_frame');
 
@@ -182,25 +185,26 @@
     function displayCollection(collections) {
         // 显示合集列表
 
-        const postwrapper = document.querySelector('div.postwrapper');
-        // const page = document.querySelector('div.page');
+
+        const postwrapper = doc.querySelector('div.postwrapper');
+        // const page = doc.querySelector('div.page');
 
         collections.forEach(collection => {
-            const block = document.createElement('div');
+            const block = doc.createElement('div');
             block.className = 'block article';
 
-            const side = document.createElement('div');
+            const side = doc.createElement('div');
             side.className = 'side';
-            const main = document.createElement('div');
+            const main = doc.createElement('div');
             main.className = 'main';
             block.appendChild(side);
             block.appendChild(main);
 
-            const content = document.createElement('div');
+            const content = doc.createElement('div');
             content.className = 'content';
-            const tag = document.createElement('div');
+            const tag = doc.createElement('div');
             tag.className = 'tag';
-            const link = document.createElement('div');
+            const link = doc.createElement('div');
             link.className = 'link';
             main.appendChild(content);
             main.appendChild(tag);
@@ -208,7 +212,7 @@
 
             const tags = collection.tags.split(',');
             tags.forEach(tagg => {
-                const tagElement = document.createElement('a');
+                const tagElement = doc.createElement('a');
                 tagElement.href = "https://www.lofter.com/tag/" + tagg;
                 tagElement.innerHTML = `● ${tagg}`;
                 tagElement.target = '_blank';
@@ -216,9 +220,9 @@
             });
 
 
-            const text = document.createElement('div');
+            const text = doc.createElement('div');
             text.className = 'text';
-            const img = document.createElement('div');
+            const img = doc.createElement('div');
             img.className = 'img';
             content.appendChild(text);
             side.appendChild(img);
@@ -284,7 +288,7 @@
 
             const detailButton = link.querySelector('a:last-child');
 
-            const list = document.createElement('div');
+            const list = doc.createElement('div');
             main.appendChild(list);
             if (collection.postCount === 0) {
                 detailButton.innerHTML = '没有内容了';
@@ -293,7 +297,7 @@
                 detailButton.remove();
                 return;
             }
-            const br = document.createElement('br');
+            const br = doc.createElement('br');
             list.appendChild(br);
 
             detailOffsets[collection.id] = 0;
@@ -325,6 +329,7 @@
 
             // postwrapper.insertBefore(block, page);
             postwrapper.appendChild(block);
+            
         });
     }
 
@@ -335,7 +340,7 @@
 
 
         items.forEach(item => {
-            const link = document.createElement('a');
+            const link = doc.createElement('a');
             link.href = item.post.blogPageUrl;
             link.target = '_blank';
             link.innerHTML = item.post.title;
@@ -358,10 +363,10 @@
 
 
         // 清除原有内容
-        const postwrapper = document.querySelector('div.postwrapper');
+        const postwrapper = doc.querySelector('div.postwrapper');
         const postElements = postwrapper.querySelectorAll('div.block');
         postElements.forEach(element => element.remove());
-        const page = document.querySelector('div.page');
+        const page = doc.querySelector('div.page');
         postwrapper.removeChild(page);
 
         // 获取合集列表
@@ -369,6 +374,32 @@
             .then(response => displayCollection(response.collections))
             .catch(error => console.error(error));
     }
+
+    function change2collection4theme() {
+        // 将页面修改为显示合集列表模式
+        newFrame();
+
+        // this.innerHTML = '<a>返回</a>';
+        // this.addEventListener('click', () => {
+        //     window.location.reload();
+        // });
+
+
+        getCollection(authkey, '', blogdomain)
+            .then(response => displayCollection(response.collections))
+            .catch(error => console.error(error));
+
+
+        // 清除原有内容
+        // const postwrapper = doc.querySelector('div.postwrapper');
+        // const postElements = postwrapper.querySelectorAll('div.block');
+        // postElements.forEach(element => element.remove());
+        // const page = doc.querySelector('div.page');
+        // postwrapper.removeChild(page);
+
+        
+    }
+
 
     function initialize() {
         // 初始化
@@ -384,6 +415,76 @@
 
     }
 
+    function intialize2() {
+        // 非默认主题下的初始化
+    
+        if (document.querySelector('ul.m-nav')) {
+            const sidelist = document.querySelector('ul.m-nav');
+            const collectionButton = document.createElement('li');
+            collectionButton.innerHTML = '<a>合集</a>';
+            collectionButton.addEventListener('click', change2collection4theme);
+            collectionButton.style.cursor = 'pointer';
+            sidelist.appendChild(collectionButton);
+        } else if (document.querySelector('div.m-nav')){
+            const sidelist = document.querySelector('div.m-nav');
+            const collectionButton = document.createElement('li');
+            collectionButton.innerHTML = '<a>合集</a>';
+            collectionButton.addEventListener('click', change2collection4theme);
+            collectionButton.style.cursor = 'pointer';
+            sidelist.children[0].appendChild(collectionButton);
+        }
+        
+    }
+
+    function newFrame() {
+        
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.backgroundColor = '#dfdfe1';
+        overlay.style.backgroundAttachment = 'fixed';
+        overlay.style.backgroundImage = 'url(https://imglf3.lf127.net/img/1553236065974180.png)';
+        overlay.style.wordWrap = 'break-word';
+        overlay.style.zIndex = '9999';
+        overlay.style.overflowY = 'auto'; // 允许覆盖层自身滚动
+
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '关闭';
+        closeBtn.style.position = 'absolute';
+        closeBtn.style.top = '10px';
+        closeBtn.style.right = '10px';
+        closeBtn.onclick = () => document.body.removeChild(overlay);
+
+        overlay.appendChild(closeBtn);
+
+        const style = document.createElement('style');
+        style.textContent = `
+            .block {
+                margin: 0 0 35px;
+            }
+        `;
+        document.head.appendChild(style);
+
+        const postwrapper = document.createElement('div');
+        postwrapper.className = 'postwrapper box wid700'
+        Object.assign(postwrapper.style, {
+            margin: '0 auto 40px',
+            padding: '25px 30px',
+            background: '#fff',
+            overflow: 'hidden',
+            webkitBoxShadow: '0 0 7px 0 rgba(0, 0, 0, 0.2)',
+            width: '640px'
+        });
+        overlay.appendChild(postwrapper);
+
+        document.body.appendChild(overlay);
+        
+
+
+    }
 
 
     // 监听 DOM 变化，等待 ul.sidelist 加载完成
@@ -391,10 +492,16 @@
         const observer = new MutationObserver((mutations, obs) => {
             const element = document.querySelector(selector);
             if (element) {
+                clearTimeout(timeoutId); // 清除超时定时器
                 obs.disconnect(); // 停止观察
                 callback(element);
             }
         });
+
+        const timeoutId = setTimeout(() => {
+            observer.disconnect(); // 停止观察
+            intialize2();
+        }, 1000); // 1秒超时
 
         // 开始观察整个文档的变化
         observer.observe(document, {
@@ -405,7 +512,6 @@
 
     // 避免脚本过早执行
     waitForElement('ul.sidelist', (element) => {
-        // console.log('组件已加载:', element);
         initialize();
     });
 
