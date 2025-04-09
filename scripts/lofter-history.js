@@ -2,7 +2,7 @@
 // @name         Lofter查看历史记录
 // @license      GPLv3
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  在 Lofter 网页版查看App端浏览记录
 // @author       SrakhiuMeow
 // @match        https://www.lofter.com/
@@ -249,14 +249,6 @@
         }, true); // 必须在捕获阶段拦截！
     }
 
-    // console.log('脚本开始执行');
-
-    // document.addEventListener('DOMContentLoaded', function() {
-    //     // 你的代码放在这里
-    //     console.log('页面加载完成，执行脚本');
-    //     initializeHistoryFeature();
-    // });
-
     function initializeHistoryFeature() {
         const slideBar = document.getElementById('slide-bar')?.children[0]?.children[1];
         if (!slideBar) {
@@ -286,11 +278,34 @@
 
     }
 
+    // 监听 DOM 变化，等待 slidebar 加载完成
+    function waitForElement(selector, callback) {
+        const observer = new MutationObserver((mutations, obs) => {
+            const element = document.querySelector(selector);
+            if (element) {
+                clearTimeout(timeoutId); // 清除超时定时器
+                obs.disconnect(); // 停止观察
+                callback(element);
+            }
+        });
 
+        const timeoutId = setTimeout(() => {
+            observer.disconnect(); // 停止观察
+        }, 2000); // 2秒超时
 
-    setTimeout(() => {
-        initializeHistoryFeature();
-    }, 2000); // 延迟 2 秒执行
+        // 开始观察整个文档的变化
+        observer.observe(document, {
+            childList: true,
+            subtree: true
+        });
+    }
 
+    // 避免脚本过早执行
+    waitForElement('#slide-bar', (element) => {
+        setTimeout(() => {
+            // console.log('Slide bar loaded');
+            initializeHistoryFeature();
+        }, 50); // 等待50ms后执行
+    });
 
 })();

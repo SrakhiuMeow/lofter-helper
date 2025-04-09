@@ -2,7 +2,7 @@
 // @name         Lofter 网页版查看合集
 // @license      GPLv3
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.2
 // @description  在 Lofter 网页版查看作者的合集内容
 // @author       SrakhiuMeow
 // @match        *://*.lofter.com/
