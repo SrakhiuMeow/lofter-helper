@@ -244,37 +244,11 @@
                 <a>${collection.viewCount}浏览</a>
                 <a>${collection.postCollectionHot}热度</a>
                 <a>${formatTimestamp(collection.updateTime)}更新</a>
+                <a id="subscribe" style="display: none;">订阅合集</a>
                 <a>查看详情</a>
             `;
 
-            // const subscribeButton = link.querySelector('a:last-child');
-            // if (collection.subscribed) {
-            //     subscribeButton.innerHTML = '取消订阅';
-            // } else {
-            //     subscribeButton.innerHTML = '订阅合集';
-            // }
-            // subscribeButton.addEventListener('click', () => {
-            //     if (subscribeButton.innerHTML === '订阅合集') {
-            //         subscribe(authkey, collection.id, true)
-            //         .then(response => {
-            //             console.log("subscribe response:", response);
-            //             subscribeButton.innerHTML = '取消订阅';
-            //         })
-            //         .catch(error => {
-            //             console.error("Error subscribing:", error);
-            //         });
-            //     } else {
-            //         subscribe(authkey, collection.id, true)
-            //         .then(response => {
-            //             console.log("unsubscribe response:", response);
-            //             subscribeButton.innerHTML = '订阅合集';
-            //         })
-            //         .catch(error => {
-            //             console.error("Error unsubscribing:", error);
-            //         });
-            //     }
-            // });
-
+            
             const copyButton = link.querySelector('a:first-child');
             copyButton.addEventListener('click', () => {
                 navigator.clipboard.writeText(collection.id).then(() => {
@@ -285,6 +259,33 @@
                 });
             });
             copyButton.style.cursor = 'pointer';
+
+
+            const subscribeButton = link.querySelector('#subscribe');
+            subscribeButton.style.cursor = 'pointer';
+            subscribeButton.addEventListener('click', () => {
+                if (subscribeButton.innerHTML === '订阅合集') {
+                    subscribe(authkey, collection.id, true)
+                        .then(response => {
+                            // console.log("subscribe response:", response);
+                            subscribeButton.innerHTML = '取消订阅';
+                        })
+                        .catch(error => {
+                            console.error("Error subscribing:", error);
+                        });
+                } else {
+                    subscribe(authkey, collection.id, true)
+                        .then(response => {
+                            // console.log("unsubscribe response:", response);
+                            subscribeButton.innerHTML = '订阅合集';
+                        })
+                        .catch(error => {
+                            console.error("Error unsubscribing:", error);
+                        });
+                }
+            });
+
+
 
             const detailButton = link.querySelector('a:last-child');
 
@@ -305,6 +306,13 @@
                 getCollectionDetail(authkey, collection.id, detailOffsets[collection.id])
                     .then(response => {
                         // console.log("collection detail response:", response);
+
+                        subscribeButton.style.display = 'block';
+                        if (response.subscribed) {
+                            subscribeButton.innerHTML = '取消订阅';
+                        } else {
+                            subscribeButton.innerHTML = '订阅合集';
+                        }
 
                         // 处理合集详情
                         displayCollectionDetail(response.items, list);
