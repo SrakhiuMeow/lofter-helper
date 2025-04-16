@@ -13,18 +13,14 @@
 (function () {
     'use strict';
 
-    function like(authkey, postId, blogId) {
-        const url = new URL("https://www.lofter.com/dwr/call/plaincall/PostBean.like.dwr");
+    // 喜欢功能暂时不可用
+    function like(authkey, postId, mode) {
+        const url = new URL("https://api.lofter.com/v2.0/exploreRecom.api");
         const params = {
-            'callCount': 1,
-            'scriptSessionId': 'null',
-            'httpSessionId': '',
-            'c0-scriptName': 'PostBean',
-            'c0-methodName': 'like',
-            'c0-id': 0,
-            'c0-param0': `number:${postId}`,
-            'c0-param1': `number:${blogId}`, // blogId
-            'batchId': 172350,
+            'product': 'lofter-android-7.6.12',
+            'op': mode ? 'like' : 'unlike',
+            'id': postId,
+            'type': 1,
         };
 
         Object.keys(params).forEach(key =>
@@ -36,7 +32,10 @@
                 method: "GET",
                 url: url.toString(),
                 headers: {
-                    
+                    'lofproduct': 'lofter-android-7.6.12',
+                    'user-agent': 'LOFTER-Android 7.6.12 (V2272A; Android 13; null) WIFI',
+                    'lofter-phone-login-auth': authkey,
+                    'accept-encoding': "br,gzip",
                 },
                 onload: function (response) {
                     try {
@@ -145,7 +144,7 @@
         });
     }
 
-    function buildArticleElement(blogUrl, avatarUrl, publisher, imageUrl, digest, tags, postUrl, title, fullContent, hotCount=0) {
+    function buildArticleElement(blogUrl, avatarUrl, publisher, imageUrl, digest, tags, postUrl, title, fullContent, postId, hotCount=0) {
         const avatar = document.createElement('div');
         avatar.className = 'mlistimg';
         avatar.innerHTML = `
@@ -183,7 +182,9 @@
                                     ${fullContent}
                                 </div>
                                 <div class="txt digest" style="display: block;">
+                                <a href="${postUrl}" target="_blank" style="text-decoration: none">
                                     ${digest}
+                                </a>
                                 </div>
                             </div>
                             <div class="more" style="display: none"><a class="w-more w-more-open">展开</a></div>
@@ -209,7 +210,7 @@
                                 <a href="${postUrl}" target="_blank" hidefocus="true">查看全文</a>
                                 <span class="opticrt"></span>
                             </span>
-                            <span class="opti">
+                            <span class="opti" style="display: block">
                                 <a class="w-icn w-icn-0b" hidefocus="true" title="喜欢">喜欢<span></span><span></span></a>
                             </span>
                         </div>
@@ -235,7 +236,7 @@
                 return;
             }
             if (likeButton.classList.contains('w-icn-0b-do')) {
-                like(authkey, postUrl, false)
+                like(authkey, postId, false)
                     .then(response => {
                         // console.log(response);
                         likeButton.classList.remove('w-icn-0b-do');
@@ -244,7 +245,7 @@
                     })
                     .catch(error => console.error(error));
             } else {
-                like(authkey, postUrl, true)
+                like(authkey, postId, true)
                     .then(response => {
                         // console.log(response);
                         likeButton.classList.add('w-icn-0b-do-anim');
@@ -259,17 +260,21 @@
         // 给不感兴趣按钮添加点击事件
         const notInterestButton = article.querySelector('.opti:nth-child(2) a');
         notInterestButton.addEventListener('click', () => {
-            // console.log('不感兴趣按钮被点击');
-            const authkey = getCookie("LOFTER-PHONE-LOGIN-AUTH");
-            if (authkey === null) {
-                console.log('未登录');
-                return;
-            }
-            notInterest(authkey, blogUrl, postUrl)
-                .then(response => {
-                    article.remove();
-                })
-                .catch(error => console.error(error));
+            notInterestButton.textContent = '确认不感兴趣';
+            notInterestButton.removeEventListener('click', () => {
+                    // console.log('不感兴趣按钮被点击');
+                const authkey = getCookie("LOFTER-PHONE-LOGIN-AUTH");
+                if (authkey === null) {
+                    console.log('未登录');
+                    return;
+                }
+                notInterest(authkey, blogUrl, postUrl)
+                    .then(response => {
+                        article.remove();
+                    })
+                    .catch(error => console.error(error));
+            });
+            
         }
         );
 
@@ -330,6 +335,7 @@
                 article.postData.postView.postPageUrl,
                 article.postData.postView.title,
                 null,
+                article.postData.postView.id,
                 article.postData.postCount.hotCount
             );
             // main.insertBefore(articleElement, firstArticle);
@@ -386,11 +392,11 @@
 
             if (isNearBottom && !isFetching) { // 只有在未加载时才触发
                 isFetching = true; // 锁定
-                console.log("触发自定义加载...");
+                // console.log("触发自定义加载...");
 
                 getRecommends(authkey, offset.num)
                     .then(response => {
-                        console.log(response);
+                        // console.log(response);
                         offset.num += response.offset;
                         insertArticles(response.list);
                     })
