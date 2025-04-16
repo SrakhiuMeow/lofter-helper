@@ -2,7 +2,7 @@
 // @name         Lofter网页版查看发现内容
 // @license      GPLv3
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  在 Lofter 网页版查看App端的个性化推荐内容
 // @author       SrakhiuMeow
 // @match        https://www.lofter.com/
