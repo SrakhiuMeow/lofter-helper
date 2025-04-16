@@ -202,7 +202,7 @@
                             <span class="opti">
                                 <a hidefocus="true">热度(${hotCount})</a>
                             </span>
-                            <span class="opti" id="notInterest">
+                            <span class="opti noti">
                                 <a>不感兴趣</a>
                                 <span class="opticrt"></span>
                             </span>
@@ -258,22 +258,25 @@
         });
 
         // 给不感兴趣按钮添加点击事件
-        const notInterestButton = article.querySelector('.opti:nth-child(2) a');
+        const notInterestButton = article.querySelector('.noti');
         notInterestButton.addEventListener('click', () => {
-            notInterestButton.textContent = '确认不感兴趣';
-            notInterestButton.removeEventListener('click', () => {
+            if (notInterestButton.innerHTML.includes('确认不感兴趣')) {
+                notInterestButton.addEventListener('click', () => {
                     // console.log('不感兴趣按钮被点击');
-                const authkey = getCookie("LOFTER-PHONE-LOGIN-AUTH");
-                if (authkey === null) {
-                    console.log('未登录');
-                    return;
-                }
-                notInterest(authkey, blogUrl, postUrl)
-                    .then(response => {
-                        article.remove();
-                    })
-                    .catch(error => console.error(error));
-            });
+                    const authkey = getCookie("LOFTER-PHONE-LOGIN-AUTH");
+                    if (authkey === null) {
+                        console.log('未登录');
+                        return;
+                    }
+                    notInterest(authkey, blogUrl, postUrl)
+                        .then(response => {
+                            article.remove();
+                        })
+                        .catch(error => console.error(error));
+                });
+            } else {
+                notInterestButton.textContent = '确认不感兴趣';
+            }           
             
         }
         );
