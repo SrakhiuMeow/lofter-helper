@@ -2,7 +2,7 @@
 // @name         Lofter网页版查看发现内容
 // @license      GPLv3
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.2
 // @description  在 Lofter 网页版查看App端的个性化推荐内容
 // @author       SrakhiuMeow
 // @match        https://www.lofter.com/
@@ -12,6 +12,47 @@
 
 (function () {
     'use strict';
+
+    function like(authkey, postId, blogId) {
+        const url = new URL("https://www.lofter.com/dwr/call/plaincall/PostBean.like.dwr");
+        const params = {
+            'callCount': 1,
+            'scriptSessionId': 'null',
+            'httpSessionId': '',
+            'c0-scriptName': 'PostBean',
+            'c0-methodName': 'like',
+            'c0-id': 0,
+            'c0-param0': `number:${postId}`,
+            'c0-param1': `number:${blogId}`, // blogId
+            'batchId': 172350,
+        };
+
+        Object.keys(params).forEach(key =>
+            url.searchParams.append(key, params[key])
+        );
+
+        return new Promise((resolve, reject) => {
+            GM.xmlHttpRequest({
+                method: "GET",
+                url: url.toString(),
+                headers: {
+                    
+                },
+                onload: function (response) {
+                    try {
+                        // console.log(response);
+                        // const data = JSON.parse(response.responseText);
+                        resolve(response);
+                    } catch (e) {
+                        reject(e);
+                    }
+                },
+                onerror: function (error) {
+                    reject(error);
+                }
+            });
+        });
+    }
 
     function getCookie(name) {
         const cookies = document.cookie.split('; ');
@@ -24,7 +65,7 @@
         return null; // 如果未找到 Cookie，返回 null
     }
 
-    function getRecommends(authkey, blogdomain, offset = 0, limit = 50) {
+    function getRecommends(authkey, offset = 0) {
         const url = new URL("https://api.lofter.com/recommend/exploreRecom.json");
         const params = {
             'offset': offset,
@@ -49,7 +90,7 @@
                     try {
                         
                         const data = JSON.parse(response.responseText);
-                        console.log(data);
+                        // console.log(data);
                         // offset += data.offset;
                         resolve(data.data);
                     } catch (e) {
@@ -63,7 +104,48 @@
         });
     }
 
-    function buildArticleElement(blogUrl, avatarUrl, publisher, imageUrl, digest, tags, postUrl, title, fullContent) {
+    function notInterest(authkey, blogId, postId) {
+        const url = new URL("https://api.lofter.com/newapi/recMark.json");
+        const params = {
+            'showId': postId,
+            'blogId': blogId,
+            'markType': 'notInterestArticle',
+            'module': 'feed_rec',
+            'product': 'lofter-android-7.6.12'
+        };
+
+        Object.keys(params).forEach(key =>
+            url.searchParams.append(key, params[key])
+        );
+
+        return new Promise((resolve, reject) => {
+            GM.xmlHttpRequest({
+                method: "GET",
+                url: url.toString(),
+                headers: {
+                    'lofproduct': 'lofter-android-7.6.12',
+                    'User-Agent': "LOFTER-Android 7.6.12 (V2272A; Android 13; null) WIFI",
+                    'Accept-Encoding': "br,gzip",
+                    'lofter-phone-login-auth': authkey,
+                },
+                onload: function (response) {
+                    try {
+
+                        const data = JSON.parse(response.responseText);
+                        // offset += data.offset;
+                        resolve(data.data);
+                    } catch (e) {
+                        reject(e);
+                    }
+                },
+                onerror: function (error) {
+                    reject(error);
+                }
+            });
+        });
+    }
+
+    function buildArticleElement(blogUrl, avatarUrl, publisher, imageUrl, digest, tags, postUrl, title, fullContent, hotCount=0) {
         const avatar = document.createElement('div');
         avatar.className = 'mlistimg';
         avatar.innerHTML = `
@@ -87,10 +169,10 @@
                     </div>
                     <div>
                         <div class="m-icnt">
-                            <h2 class="tit"> ${title}</h2>
+                            <h2 class="tit"><a href="${postUrl}" target="_blank">${title}</a></h2>
                             <div class="cnt">
                                 <div class="img" style="width: 164px; height: auto; display: ${notDisplayImage ? "none" : "block"}">
-                                    <div class="imgc"> <a hidefocus="true"><img
+                                    <div class="imgc"> <a href="${postUrl}" target="_blank" hidefocus="true"><img
                                                 style="width:164px;"
                                                 src="${imageUrl}?imageView&amp;thumbnail=1000x0&amp;type=jpg"></a>
                                         <div class="sphotolabels" style="display:none"></div>
@@ -117,8 +199,18 @@
                         </div>
                         <div class="optb"> <span class="opti" style="display: block;">
                             <span class="opti">
+                                <a hidefocus="true">热度(${hotCount})</a>
+                            </span>
+                            <span class="opti" id="notInterest">
+                                <a>不感兴趣</a>
+                                <span class="opticrt"></span>
+                            </span>
+                            <span class="opti">
                                 <a href="${postUrl}" target="_blank" hidefocus="true">查看全文</a>
                                 <span class="opticrt"></span>
+                            </span>
+                            <span class="opti">
+                                <a class="w-icn w-icn-0b" hidefocus="true" title="喜欢">喜欢<span></span><span></span></a>
                             </span>
                         </div>
                     </div>
@@ -132,6 +224,54 @@
         article.className = 'm-mlist';
         article.appendChild(avatar);
         article.appendChild(content);
+
+        // 给喜欢按钮添加点击事件
+        const likeButton = article.querySelector('.w-icn-0b');
+        likeButton.addEventListener('click', () => {
+            // console.log('喜欢按钮被点击');
+            const authkey = getCookie("LOFTER-PHONE-LOGIN-AUTH");
+            if (authkey === null) {
+                console.log('未登录');
+                return;
+            }
+            if (likeButton.classList.contains('w-icn-0b-do')) {
+                like(authkey, postUrl, false)
+                    .then(response => {
+                        // console.log(response);
+                        likeButton.classList.remove('w-icn-0b-do');
+                        likeButton.classList.remove('w-icn-0b-do-anim');
+                        likeButton.querySelector('span').textContent = '喜欢';
+                    })
+                    .catch(error => console.error(error));
+            } else {
+                like(authkey, postUrl, true)
+                    .then(response => {
+                        // console.log(response);
+                        likeButton.classList.add('w-icn-0b-do-anim');
+                        likeButton.classList.add('w-icn-0b-do');
+                        likeButton.querySelector('span').textContent = '取消喜欢';
+                    })
+                    .catch(error => console.error(error));
+            }
+            
+        });
+
+        // 给不感兴趣按钮添加点击事件
+        const notInterestButton = article.querySelector('.opti:nth-child(2) a');
+        notInterestButton.addEventListener('click', () => {
+            // console.log('不感兴趣按钮被点击');
+            const authkey = getCookie("LOFTER-PHONE-LOGIN-AUTH");
+            if (authkey === null) {
+                console.log('未登录');
+                return;
+            }
+            notInterest(authkey, blogUrl, postUrl)
+                .then(response => {
+                    article.remove();
+                })
+                .catch(error => console.error(error));
+        }
+        );
 
         // 给展开按钮添加点击事件
         // const more = article.querySelector('a.w-more');
@@ -179,24 +319,25 @@
 
         // 插入新元素(推荐文章)
         articles.forEach(article => {
-            console.log(article);
+            // console.log(article);
             const articleElement = buildArticleElement(
                 "https://" + article.blogInfo.blogName + ".lofter.com",
                 article.blogInfo.bigAvaImg,
-                article.blogInfo.blogName,
-                article.postData.postView.firstImage.raw,
+                article.blogInfo.blogNickName,
+                article.postData.postView.firstImage.orign.split('?')[0],
                 article.postData.postView.digest,
                 article.postData.postView.tagList.map(tag => `<span class="opti"><a href="${tag.tagUrl}" target="_blank"><span>${tag}</span></a></span>`).join(' '),
                 article.postData.postView.postPageUrl,
                 article.postData.postView.title,
-                null
+                null,
+                article.postData.postCount.hotCount
             );
             // main.insertBefore(articleElement, firstArticle);
             main.appendChild(articleElement);
         });
     }
 
-    var offset = 0;
+    const offset = {num: 0};
 
     function change2recommends() {
         // 变换按钮状态
@@ -224,35 +365,41 @@
             div.remove();
         });
 
-        const history = getRecommends(authkey, blogDomain, 0, 20)
+        const history = getRecommends(authkey, 0)
             .then(response => {
-                console.log(response);
+                // console.log(response);
                 insertArticles(response.list);
+                offset.num += response.offset;
             })
             .catch(error => console.error(error));
         // console.log('hi');
         // console.log(history);
 
+        
+        let isFetching = false; // 防止重复请求
+
         window.addEventListener('scroll', e => {
-            e.stopImmediatePropagation(); // 先阻止原逻辑
+            e.stopImmediatePropagation();
             const threshold = 100;
             const isNearBottom = (window.innerHeight + window.scrollY) >=
                 document.body.scrollHeight - threshold;
 
-            if (isNearBottom) {
-                // console.log("触发自定义加载...");
-                // 调用你的加载函数（例如从其他API获取数据）
+            if (isNearBottom && !isFetching) { // 只有在未加载时才触发
+                isFetching = true; // 锁定
+                console.log("触发自定义加载...");
 
-                const history = getRecommends(authkey, blogDomain, offset, 20)
+                getRecommends(authkey, offset.num)
                     .then(response => {
                         console.log(response);
-                        offset += response.offset;
+                        offset.num += response.offset;
                         insertArticles(response.list);
                     })
-                    .catch(error => console.error(error));
-                
+                    .catch(error => console.error(error))
+                    .finally(() => {
+                        isFetching = false; // 解锁
+                    });
             }
-        }, true); // 必须在捕获阶段拦截！
+        }, true);
     }
 
     function initializeRecommendsFeature() {
