@@ -2,12 +2,14 @@
 // @name         Lofter查看历史记录
 // @license      GPLv3
 // @namespace    http://tampermonkey.net/
-// @version      0.3
-// @description  在 Lofter 网页版查看App端浏览记录
+// @version      0.4
+// @description  在 Lofter 网页版查看并记录阅读历史
 // @author       SrakhiuMeow
 // @match        https://www.lofter.com/
+// @match        https://*.lofter.com/post/*
 // @grant        GM.xmlHttpRequest
 // @connect      api.lofter.com
+// @connect      da.lofter.com
 // // @run-at       document-start
 // ==/UserScript==
 
@@ -23,6 +25,57 @@
             }
         }
         return null; // 如果未找到 Cookie，返回 null
+    }
+
+    function updateHistory(authkey, userId, postId, blogId, collectionId=null, postType=null) {
+        // 自动将访问的页面添加到历史记录
+
+        const time = Math.floor(Date.now());
+        const url = new URL("https://da.lofter.com/datacollect/v1/upload");
+        const data = {
+            'time': time,
+            'list': [
+                {
+                    'userId': userId,
+                    'data': {
+                        'postId': postId,
+                        'blogId': blogId,
+                        // 'collectionId': collectionId,
+                        // 'postType': '1',
+                        'time': time,
+                    },
+                    'type': 'postRead',                    
+                }
+            ]
+        };
+
+        return new Promise((resolve, reject) => {
+            GM.xmlHttpRequest({
+                method: "POST",
+                url: url.toString(),
+                data: JSON.stringify(data),
+                // data: data,
+                headers: {
+                    'lofproduct': 'lofter-android-7.6.12',
+                    'User-Agent': "LOFTER-Android 7.6.12 (V2272A; Android 13; null) WIFI",
+                    'Accept-Encoding': "br,gzip",
+                    'content-type': 'application/json; charset=UTF-8',
+                    'lofter-phone-login-auth': authkey,
+                },
+                onload: function (response) {
+                    try {
+                        const data = response;
+                        resolve(data);
+                    } catch (e) {
+                        reject(e);
+                    }
+                },
+                onerror: function (error) {
+                    reject(error);
+                }
+            });
+        });
+
     }
 
     function getHistory(authkey, blogdomain, offset = 0, limit = 50) {
@@ -89,7 +142,7 @@
                     </div>
                     <div>
                         <div class="m-icnt">
-                            <h2 class="tit"> ${title}</h2>
+                            <h2 class="tit"><a href="${postUrl}" target="_blank">${title}</a></h2>
                             <div class="cnt">
                                 <div class="img" style="width: 164px; height: auto; display: ${notDisplayImage ? "none" : "block"}">
                                     <div class="imgc"> <a hidefocus="true"><img
@@ -168,11 +221,6 @@
 
 
         return article;
-    }
-
-    function insertArticle(article) {
-        const main = document.getElementById('main');
-        main.insertBefore(article, main.children[7]);
     }
 
     function insertArticles(articles) {
@@ -257,7 +305,7 @@
         }
         // 添加分割线
         const dividingLine = document.createElement('div');
-        dividingLine.className = slideBar.children[3].children[0].className;
+        dividingLine.className = document.querySelector('[class*="horizontalDividingLine"]').className;
         slideBar.insertBefore(dividingLine, slideBar.children[0]);
 
         // 添加历史记录按钮
@@ -300,12 +348,40 @@
         });
     }
 
-    // 避免脚本过早执行
-    waitForElement('#slide-bar', (element) => {
-        setTimeout(() => {
-            // console.log('Slide bar loaded');
-            initializeHistoryFeature();
-        }, 50); // 等待50ms后执行
-    });
+    const currentUrl = window.location.href;
+    if (currentUrl.includes('post')) {
+        // 如果当前页面是文章页面
+        const iframe = document.getElementById('control_frame')
+        const iframeSrc = iframe?.src;
+        const blogId = iframeSrc?.split('blogId=')[1]?.split('&')[0];
+        const postId = iframeSrc?.split('postId=')[1]?.split('&')[0];
+
+        const authkey = getCookie("LOFTER-PHONE-LOGIN-AUTH");
+        if (authkey === null) {
+            console.log('未登录');
+            throw new Error('未登录');
+        }
+
+        const traceId = getCookie("__LOFTER_TRACE_UID");
+        const userId = traceId?.split('#')[1]?.split('#')[0];
+        updateHistory(authkey, userId, postId, blogId)
+            .then(response => {
+                // console.log('更新历史记录成功:', response);/
+            })
+            .catch(error => {
+                console.error('更新历史记录失败:', error);
+            });
+
+    } 
+    else {
+        // 避免脚本过早执行
+        waitForElement('#slide-bar', (element) => {
+            setTimeout(() => {
+                // console.log('Slide bar loaded');
+                initializeHistoryFeature();
+            }, 50); // 等待50ms后执行
+        });
+    }
+    
 
 })();

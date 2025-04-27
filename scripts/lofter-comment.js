@@ -2,7 +2,7 @@
 // @name         Lofter 网页版显示划线评论
 // @license      GPLv3
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.4
 // @description  在 Lofter 网页版显示划线评论
 // @author       SrakhiuMeow
 // @match        *://*.lofter.com/post*
