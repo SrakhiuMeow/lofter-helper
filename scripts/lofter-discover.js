@@ -35,11 +35,12 @@
                     'lofproduct': 'lofter-android-7.6.12',
                     'user-agent': 'LOFTER-Android 7.6.12 (V2272A; Android 13; null) WIFI',
                     'lofter-phone-login-auth': authkey,
+                    'deviceid': '',
                     'accept-encoding': "br,gzip",
                 },
                 onload: function (response) {
                     try {
-                        // console.log(response);
+                        console.log(response);
                         // const data = JSON.parse(response.responseText);
                         resolve(response);
                     } catch (e) {
@@ -144,7 +145,7 @@
         });
     }
 
-    function buildArticleElement(blogUrl, avatarUrl, publisher, imageUrl, digest, tags, postUrl, title, fullContent, postId, hotCount=0) {
+    function buildArticleElement(blogUrl, avatarUrl, publisher, imageUrl, digest, tags, postUrl, title, fullContent, postId, hotCount=0, blogId=0) {
         const avatar = document.createElement('div');
         avatar.className = 'mlistimg';
         avatar.innerHTML = `
@@ -236,7 +237,7 @@
                 return;
             }
             if (likeButton.classList.contains('w-icn-0b-do')) {
-                like(authkey, postId, false)
+                like(authkey, postId, false, blogId)
                     .then(response => {
                         // console.log(response);
                         likeButton.classList.remove('w-icn-0b-do');
@@ -245,7 +246,7 @@
                     })
                     .catch(error => console.error(error));
             } else {
-                like(authkey, postId, true)
+                like(authkey, postId, true, blogId)
                     .then(response => {
                         // console.log(response);
                         likeButton.classList.add('w-icn-0b-do-anim');
@@ -268,7 +269,7 @@
                         console.log('未登录');
                         return;
                     }
-                    notInterest(authkey, blogUrl, postUrl)
+                    notInterest(authkey, blogId, postId)
                         .then(response => {
                             article.remove();
                         })
@@ -339,7 +340,8 @@
                 article.postData.postView.title,
                 null,
                 article.postData.postView.id,
-                article.postData.postCount.hotCount
+                article.postData.postCount.hotCount,
+                article.postData.postView.blogId
             );
             // main.insertBefore(articleElement, firstArticle);
             main.appendChild(articleElement);
