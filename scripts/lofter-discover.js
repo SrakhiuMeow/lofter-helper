@@ -39,7 +39,7 @@
                 },
                 onload: function (response) {
                     try {
-                        console.log(response);
+                        // console.log(response);
                         // const data = JSON.parse(response.responseText);
                         resolve(response);
                     } catch (e) {
