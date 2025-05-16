@@ -2,7 +2,7 @@
 // @name         Lofter网页版查看发现内容
 // @license      GPLv3
 // @namespace    http://tampermonkey.net/
-// @version      0.3
+// @version      0.3.1
 // @description  在 Lofter 网页版查看App端的个性化推荐内容
 // @author       SrakhiuMeow
 // @match        https://www.lofter.com/
@@ -35,7 +35,6 @@
                     'lofproduct': 'lofter-android-7.6.12',
                     'user-agent': 'LOFTER-Android 7.6.12 (V2272A; Android 13; null) WIFI',
                     'lofter-phone-login-auth': authkey,
-                    'deviceid': '',
                     'accept-encoding': "br,gzip",
                 },
                 onload: function (response) {
@@ -211,7 +210,7 @@
                                 <a href="${postUrl}" target="_blank" hidefocus="true">查看全文</a>
                                 <span class="opticrt"></span>
                             </span>
-                            <span class="opti" style="display: block">
+                            <span class="opti" style="display: none">
                                 <a class="w-icn w-icn-0b" hidefocus="true" title="喜欢">喜欢<span></span><span></span></a>
                             </span>
                         </div>
