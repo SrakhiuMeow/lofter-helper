@@ -2,7 +2,7 @@
 // @name         Lofter查看历史记录
 // @license      GPLv3
 // @namespace    http://tampermonkey.net/
-// @version      0.4
+// @version      0.4.1
 // @description  在 Lofter 网页版查看并记录阅读历史
 // @author       SrakhiuMeow
 // @match        https://www.lofter.com/
@@ -339,7 +339,7 @@
 
         const timeoutId = setTimeout(() => {
             observer.disconnect(); // 停止观察
-        }, 2000); // 2秒超时
+        }, 5000); // 5秒超时
 
         // 开始观察整个文档的变化
         observer.observe(document, {
@@ -379,7 +379,7 @@
             setTimeout(() => {
                 // console.log('Slide bar loaded');
                 initializeHistoryFeature();
-            }, 50); // 等待50ms后执行
+            }, 100); // 等待100ms后执行
         });
     }
     
