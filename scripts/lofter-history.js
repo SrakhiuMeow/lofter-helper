@@ -379,7 +379,7 @@
             setTimeout(() => {
                 // console.log('Slide bar loaded');
                 initializeHistoryFeature();
-            }, 100); // 等待100ms后执行
+            }, 1000); // 等待1s后执行
         });
     }
     
